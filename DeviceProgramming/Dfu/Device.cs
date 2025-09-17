@@ -61,6 +61,11 @@ namespace DeviceProgramming.Dfu
         public event EventHandler<ProgressChangedEventArgs> DownloadProgressChanged = delegate { };
 
         /// <summary>
+        /// This event fires during the erase stage to indicate the relative progress in percentages.
+        /// </summary>
+        public event EventHandler<ProgressChangedEventArgs> EraseProgressChanged = delegate { };
+
+        /// <summary>
         /// This event fires when a device reported error is detected.
         /// </summary>
         public event EventHandler<ErrorEventArgs> DeviceError = delegate { };
@@ -413,6 +418,12 @@ namespace DeviceProgramming.Dfu
             DownloadProgressChanged(this, new System.ComponentModel.ProgressChangedEventArgs(percentage, transferredLength));
         }
 
+        private void UpdateEraseProgress(int totalBlocks, int erasedBlocks)
+        {
+            int percentage = 100 * erasedBlocks / totalBlocks;
+            EraseProgressChanged(this, new System.ComponentModel.ProgressChangedEventArgs(percentage, erasedBlocks));
+        }
+
         private string GetErrorString(Status status)
         {
             string error;
@@ -730,6 +741,25 @@ namespace DeviceProgramming.Dfu
                     }
 
                     // erase blocks when necessary
+                    int totalBlocksToErase = 0;
+                    int erasedBlocks = 0;
+                    
+                    // count how many blocks need to be erased
+                    for (int block = firstBlock; block <= lastBlock; block++)
+                    {
+                        if (layout.Blocks[block].Permissions.IsWriteable() && layout.Blocks[block].Permissions.IsEraseable())
+                        {
+                            totalBlocksToErase++;
+                        }
+                    }
+
+                    // report erase start if there are blocks to erase
+                    if (totalBlocksToErase > 0)
+                    {
+                        EraseProgressChanged(this, new ProgressChangedEventArgs(0, 0));
+                    }
+
+                    // erase blocks and report progress
                     for (int block = firstBlock; block <= lastBlock; block++)
                     {
                         if (!layout.Blocks[block].Permissions.IsWriteable())
@@ -740,6 +770,13 @@ namespace DeviceProgramming.Dfu
                         {
                             status = SeErase((uint)layout.Blocks[block].StartAddress);
                             VerifyState(status, State.DnloadIdle);
+                            erasedBlocks++;
+
+                            // report erase progress if there are blocks to erase
+                            if (totalBlocksToErase > 0)
+                            {
+                                UpdateEraseProgress(totalBlocksToErase, erasedBlocks);
+                            }
                         }
                     }
 
