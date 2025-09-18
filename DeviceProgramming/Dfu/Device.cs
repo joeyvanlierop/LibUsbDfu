@@ -419,10 +419,10 @@ namespace DeviceProgramming.Dfu
             DownloadProgressChanged(this, new System.ComponentModel.ProgressChangedEventArgs(percentage, transferredLength));
         }
 
-        private void UpdateEraseProgress(int totalBlocks, int erasedBlocks)
+        private void UpdateEraseProgress(ulong totalSize, ulong erasedSize)
         {
-            int percentage = 100 * erasedBlocks / totalBlocks;
-            EraseProgressChanged(this, new System.ComponentModel.ProgressChangedEventArgs(percentage, erasedBlocks));
+            int percentage = (int)(100 * erasedSize / totalSize);
+            EraseProgressChanged(this, new System.ComponentModel.ProgressChangedEventArgs(percentage, (int)erasedSize));
         }
 
         private string GetErrorString(Status status)
@@ -742,20 +742,20 @@ namespace DeviceProgramming.Dfu
                     }
 
                     // erase blocks when necessary
-                    int totalBlocksToErase = 0;
-                    int erasedBlocks = 0;
+                    ulong totalSizeToErase = 0;
+                    ulong erasedSize = 0;
                     
-                    // count how many blocks need to be erased
+                    // calculate total size of blocks that need to be erased
                     for (int block = firstBlock; block <= lastBlock; block++)
                     {
                         if (layout.Blocks[block].Permissions.IsWriteable() && layout.Blocks[block].Permissions.IsEraseable())
                         {
-                            totalBlocksToErase++;
+                            totalSizeToErase += layout.Blocks[block].Size;
                         }
                     }
 
                     // report erase start if there are blocks to erase
-                    if (totalBlocksToErase > 0)
+                    if (totalSizeToErase > 0)
                     {
                         EraseProgressChanged(this, new ProgressChangedEventArgs(0, 0));
                     }
@@ -771,12 +771,12 @@ namespace DeviceProgramming.Dfu
                         {
                             status = SeErase((uint)layout.Blocks[block].StartAddress);
                             VerifyState(status, State.DnloadIdle);
-                            erasedBlocks++;
+                            erasedSize += layout.Blocks[block].Size;
 
                             // report erase progress if there are blocks to erase
-                            if (totalBlocksToErase > 0)
+                            if (totalSizeToErase > 0)
                             {
-                                UpdateEraseProgress(totalBlocksToErase, erasedBlocks);
+                                UpdateEraseProgress(totalSizeToErase, erasedSize);
                             }
                         }
                     }
