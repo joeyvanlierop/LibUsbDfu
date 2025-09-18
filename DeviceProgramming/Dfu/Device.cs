@@ -62,6 +62,7 @@ namespace DeviceProgramming.Dfu
 
         /// <summary>
         /// This event fires during the erase stage to indicate the relative progress in percentages.
+        /// Note: This functionality is specific to DfuSe devices
         /// </summary>
         public event EventHandler<ProgressChangedEventArgs> EraseProgressChanged = delegate { };
 
